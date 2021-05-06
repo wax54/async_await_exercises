@@ -2,48 +2,67 @@
 //Numbers Exercise
 /********************* */
 console.log("***********************************");
-console.log("NUMBERS EXERCISE");
+console.log("NUMBERS EXERCISE --- ASYNC AWAIT");
+console.log("run runSolutions(num) to see the solution run for any number!");
 console.log("***********************************");
 
-let favNumberPromise = axios.get('http://numbersapi.com/8/trivia?json');
-favNumberPromise.then((res)=>{
-    //Print My fav number
-    console.log(res.data);
-})
+runSolutions();
 
-let multiNumberPromise = axios.get('http://numbersapi.com/1,3..5/trivia?json');
-multiNumberPromise.then((res) => {
+async function runSolutions(favNum=8){
+    const multiNums = [2,5,6,8,109,23];
 
-    //Print multiple num, data
-    for (let number in res.data){
-        console.log(`number ${number} has the fact ${res.data[number]}`);
+    //Getting the Facts
+    const favNumFactPromise = getFact(favNum);
+    const multiNumFactPromise = getFacts(...multiNums);
+    const favNumFactsPromises = [];
+
+    for (let i = 0; i < 4; i++) {
+        favNumFactsPromises.push(getFact(favNum));
     }
-})
+    
+    //waiting to make sure the neccssarry promise is done 
+    const favNumFact = await favNumFactPromise;
 
+    console.log('Q1.');
+    console.log('My fav num is '+favNum);
+    console.log(`A Fact about my fav num, ${favNum}, is ${favNumFact}`);
+    
+    const factGlob = await multiNumFactPromise;
 
+    console.log('Q2.');
+    //Print multiple num, data
+    for (let number in factGlob) {
+        console.log(`number ${number} has the fact ${factGlob[number]}`);
+    }
+    //wait for all the facts to come in
+    const arrayOfFacts = await Promise.all(favNumFactsPromises); 
+    addListToDOM(arrayOfFacts, `My Favorite Number is ${favNum}`);
 
-
-const favNumber = 8;
-
-promises = [];
-for(let i = 0; i < 4; i++){
-    promises.push(axios.get('http://numbersapi.com/8/trivia?json'));
 }
 
-Promise.all(promises)
-    .then( allResps => {
-        const div = createAndAppend('div', `My Favorite Number is ${favNumber}`);
-        const ul = createAndAppend('ul', `Facts`, div);
-        for(res of allResps){
-            const li = createAndAppend('div', res.data.text, ul);
-        }
 
-    })
-    .catch( err => {
-        console.log(err)
-    });
+async function getFact(number){
+    const {data: {text: fact} } = await axios.get(`http://numbersapi.com/${number}/trivia?json`);
+    return fact;
+}
+async function getFacts(...numbers) {
+    const numbersString = numbers.join(',');
+    const { data: result } = await axios.get(`http://numbersapi.com/${numbersString}/trivia?json`);
+    if (result.text){
+        return {[result.number] : result.text};
+    }else{
+        return result;
+    }
+}
 
 
+function addListToDOM(arrOfStrings, title) {
+    const div = createAndAppend('div', title);
+    const ul = createAndAppend('ul', `Facts`, div);
+    for (text of arrOfStrings) {
+        const li = createAndAppend('div', text, ul);
+    }
+}
 function createAndAppend(elString, text, parent=document.body){
     let el = document.createElement(elString);
     el.innerHTML = text;
