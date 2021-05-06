@@ -2,111 +2,122 @@
 /********************* */
 //Deck Of cards Exercise
 /********************* */
+const baseUrl = 'https://deckofcardsapi.com/api/deck';
+
+runSolution1()
+runSolution2()
+
+async function runSolution1(){
+    const { card } = await drawCard();
+    console.log("TEST 1 RESULT");
+    console.log(`${card.value} of ${card.suit}`);
+}
 
 
-let newCardPromise = axios.get("https://deckofcardsapi.com/api/deck/new/draw/?count=1")
-newCardPromise
-    .then(res => {
-        card = res.data.cards[0];
+async function runSolution2() {
+    const cards =[];
 
-        console.log("TEST 1 RESULT");
-        console.log(`${card.value} of ${card.suit}`);
-    });
+    const { card: card1, deckId} = await drawCard();
+    const { card: card2} = await drawCard(deckId);
 
+    console.log("TEST 2 RESULT");
+    console.log(`${card1.value} of ${card1.suit}`);
+    console.log(`${card2.value} of ${card2.suit}`);
+}
 
-const cards = [];
-
-let firstCardPromise = axios.get("https://deckofcardsapi.com/api/deck/new/draw/?count=1")
-firstCardPromise
-    .then(res =>{
-        card = res.data.cards[0];
-        deck = res.data.deck_id
-        cards.push(`${card.value} of ${card.suit}`);
-
-        return axios.get(`https://deckofcardsapi.com/api/deck/${deck}/draw/?count=1`)
-    })
-    .then( res => {
-        card = res.data.cards[0];
-        cards.push(`${card.value} of ${card.suit}`);
-        console.log("TEST 2 RESULT");
-        for(card of cards){
-            console.log(card);
-        }
-    });
+async function drawCard(deckToUse='new'){
+    const res = await axios.get(`${baseUrl}/${deckToUse}/draw/?count=1`);
+    let { data: { deck_id:deckId, cards } } = res;
+    return { deckId, 'card':cards[0]};
+}
 
 
 
+
+
+/*********************** */
+// Start of solution 3
+/*********************** */
 
 
 
 class DeckOfCards{
     constructor(){
-        const resPromise = axios.get('https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1')
-        resPromise.then( res => {this.deck_id = res.data.deck_id});
+        this.baseUrl = 'https://deckofcardsapi.com/api/deck';
     }
     
-    drawCard(){
-        return new Promise((resolve, reject) => {
-            axios.get(`https://deckofcardsapi.com/api/deck/${this.deck_id}/draw/?count=1`)
-                .then( res => {
-                    resolve(res.data.cards[0]);
-                })
-                .catch( err =>{
-                    reject(err);
-                });
-            });
+    async init(){
+        const { data:{ deck_id:deckId } } = await axios.get(`${this.baseUrl}/new/shuffle/?deck_count=1`);
+        this.deckId = deckId;
     }
-    shuffle(){
-        return new Promise((resolve, reject) => {
-            axios.get(`https://deckofcardsapi.com/api/deck/${this.deck_id}/shuffle/`)
-                .then(res => {
-                    if(res.data.success){
-                        resolve(res);
-                    }
-                    else{
-                        reject(res);
-                    }
-                })
-                .catch(err => {
-                    reject(err);
-                });
-        });
-}
-}
 
-/*********************** */
-// Start of section 3
-/*********************** */
-
-const todaysDeck = new DeckOfCards();
-
-function reshuffleCards(evt) {
-    todaysDeck.shuffle()
-        .then(card => {
-            const htmlCards = document.querySelectorAll('.card');
-            for(card of htmlCards){
-                card.remove();
+    async drawCard() {
+        try{
+            if (!this.deckId){
+                await self.init();
             }
+            const res = await axios.get(`${this.baseUrl}/${this.deckId}/draw/?count=1`);
+            const { data: { cards } } = res;
+            return  cards[0];
+        }
+        catch (e){
+            return e;
 
-            deckFullView();
-        })
-        .catch(err => {
-            console.log(err);
-        });
+        }
+    }
+    
+    async shuffle(){
+        try {
+            if (!this.deckId) {
+                await self.init();
+            }
+            const res = await axios.get(`${this.baseUrl}/${this.deckId}/shuffle/`);
+            if (res.data.success){
+                return res;
+            }else{
+                throw res;
+            }
+        }
+        catch (e) {
+            return e;
+
+        }
+    }
 }
 
+const deck = new DeckOfCards();
+deck.init();
 
-function drawCardButtonClicked(evt){
-    todaysDeck.drawCard()
-        .then( card=>{
+async function drawCardButtonClicked(evt) {
+    try{
+        const card = await deck.drawCard()
+        addCardToDOM(card);
+    }catch(err){
+        //if at first you don't succeed...
+        try {
+            //you try again!
+            const card = await deck.drawCard();
             addCardToDOM(card);
-        })
-        .catch( err => {
-            todaysDeck.drawCard()
-                .then(card => { addCardToDOM(card)})
-                .catch( err => console.log(err))
-        });
+        } catch (err) {
+            //but if you fail again, you just log it... I guess
+            console.log(err);
+        }
+    }
 }
+
+async function reshuffleCards(evt) {
+    try {
+        await deck.shuffle();
+        const htmlCards = document.querySelectorAll('.card');
+        for(card of htmlCards){
+            card.remove();
+        }
+            deckFullView();
+    } catch (err){
+        console.log(err);
+    }
+}
+
 
 
 
